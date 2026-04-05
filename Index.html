@@ -10,8 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="Zeiterfassung"/>
 <link rel="manifest" href="manifest.json"/>
 <title>Zeiterfassung</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -20,7 +21,7 @@
   --green:#1e9e4a;--green-light:rgba(30,158,74,0.10);
   --ink:#111111;--ink2:#444444;--muted:#888888;
   --border:#e0e0e5;--border2:#cccccc;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --mono:ui-monospace,'SF Mono','Courier New',monospace;--sans:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
   --r:14px;--r2:10px;
 }
 html,body{height:100%;overscroll-behavior:none}
@@ -102,6 +103,7 @@ textarea:focus,input:focus{border-color:var(--red)}
 .empty{text-align:center;padding:20px;color:var(--muted);font-size:13px}
 .space{height:16px}
 </style>
+
 </head>
 <body>
 <header>
