@@ -1,0 +1,10 @@
+{
+  "name": "Zeiterfassung",
+  "short_name": "Zeiterfassung",
+  "description": "Zeiterfassung App",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#c0150f",
+  "icons": []
+}
