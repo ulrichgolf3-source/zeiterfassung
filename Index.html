@@ -11,6 +11,51 @@
   <link rel="manifest" href="manifest.json" />
   <title>Zeiterfassung</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Force colors even if fonts fail */
+    :root {
+      --bg:#f4f5f7 !important;
+      --surface:#ffffff !important;
+      --surface2:#eef0f4 !important;
+      --border:#dde0e8 !important;
+      --border2:#c4c9d8 !important;
+      --accent:#c41212 !important;
+      --accent-dim:rgba(196,18,18,0.09) !important;
+      --green:#1a8f4e !important;
+      --green-bg:#1a8f4e !important;
+      --green-dim:rgba(26,143,78,0.10) !important;
+      --red:#c41212 !important;
+      --red-bg:#c41212 !important;
+      --red-dim:rgba(196,18,18,0.10) !important;
+      --blue:#1555b7 !important;
+      --blue-dim:rgba(21,85,183,0.10) !important;
+      --amber:#b85e00 !important;
+      --amber-dim:rgba(184,94,0,0.10) !important;
+      --text:#0f1623 !important;
+      --muted:#3d4455 !important;
+      --muted2:#6b7280 !important;
+      --mono:'DM Mono',ui-monospace,monospace !important;
+      --sans:'DM Sans',-apple-system,sans-serif !important;
+      --radius:14px !important;
+    }
+    /* Critical overrides */
+    .tab.active { background:#c41212 !important; color:#fff !important; border-color:#c41212 !important; }
+    .btn-green { background:#1a8f4e !important; border-color:#1a8f4e !important; color:#fff !important; }
+    .btn-red { background:#c41212 !important; border-color:#c41212 !important; color:#fff !important; }
+    .btn-red:disabled,.btn-green:disabled { background:#eef0f4 !important; border-color:#c4c9d8 !important; color:#6b7280 !important; }
+    .card-label { color:#c41212 !important; }
+    .week-summary { background:#c41212 !important; }
+    .week-sum-val { color:#fff !important; }
+    .week-sum-label { color:rgba(255,255,255,0.85) !important; }
+    .day-hours { color:#c41212 !important; background:rgba(196,18,18,0.09) !important; border-color:rgba(196,18,18,0.2) !important; }
+    .logo em { color:#c41212 !important; }
+    header { border-bottom:3px solid #c41212 !important; }
+    .entry-dur { color:#c41212 !important; background:rgba(196,18,18,0.09) !important; }
+    .day-total { background:#c41212 !important; }
+    .day-total-label,.day-total-val { color:#fff !important; }
+    .live-clock.running { color:#1a8f4e !important; }
+    .status-dot.running { background:#1a8f4e !important; }
+  </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
