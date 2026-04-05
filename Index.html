@@ -1012,7 +1012,14 @@ function renderWeek() {
       </div>
       ${hasData
         ? `<div class="day-detail">${detailHtml}</div>`
-        : `<div class="day-empty-hint">Kein Eintrag</div>`
+        : `<div class="day-empty-hint" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Kein Eintrag</span>
+            <button onclick="openAddEntry('${key}')"
+              style="font-size:12px;font-weight:600;color:#c41212;background:rgba(196,18,18,0.09);
+              border:1px solid rgba(196,18,18,0.3);border-radius:8px;padding:5px 12px;cursor:pointer;">
+              + Nachtragen
+            </button>
+          </div>`
       }
     </div>`;
   }
@@ -1489,6 +1496,54 @@ function saveEdit() {
   renderWeek();
 }
 
+
+// ─── Add Entry for past day ───────────────────────
+function openAddEntry(key) {
+  document.getElementById('addKey').value = key;
+  const d = new Date(key + 'T12:00:00');
+  document.getElementById('addModalDate').textContent =
+    d.toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+  document.getElementById('addKommen').value = '08:00';
+  document.getElementById('addGehen').value = '17:00';
+  document.getElementById('addNote').value = '';
+  document.getElementById('addModal').style.display = 'flex';
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+function saveAddEntry() {
+  const key = document.getElementById('addKey').value;
+  const kommenTime = document.getElementById('addKommen').value;
+  const gehenTime  = document.getElementById('addGehen').value;
+  const note = document.getElementById('addNote').value.trim();
+
+  if (!kommenTime || !gehenTime) { alert('Bitte beide Zeiten eingeben.'); return; }
+
+  const [kH, kM] = kommenTime.split(':').map(Number);
+  const [gH, gM] = gehenTime.split(':').map(Number);
+  const base = new Date(key + 'T00:00:00');
+  const newKommen = new Date(base); newKommen.setHours(kH, kM, 0, 0);
+  const newGehen  = new Date(base); newGehen.setHours(gH, gM, 0, 0);
+
+  if (newGehen <= newKommen) { alert('Gehen muss nach Kommen liegen.'); return; }
+
+  const durationMs = newGehen - newKommen;
+  if (!state.entries[key]) state.entries[key] = [];
+  state.entries[key].push({
+    kommen: newKommen.toISOString(),
+    gehen:  newGehen.toISOString(),
+    durationMs,
+    durationH: durationMs / 3600000,
+    note
+  });
+  save();
+  closeAddModal();
+  renderWeek();
+  renderTodayEntries();
+}
+
 load();
 updateUI();
 startClock();
@@ -1536,6 +1591,50 @@ initExportDates();
         style="padding:12px;border-radius:10px;border:none;
         background:var(--accent);color:#fff;font-family:var(--sans);
         font-size:14px;font-weight:700;cursor:pointer;">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Entry Modal -->
+
+<div id="addModal" style="display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:16px;font-weight:700;color:#0f1623;margin-bottom:4px;">+ Eintrag nachtragen</div>
+    <div id="addModalDate" style="font-size:12px;color:#6b7280;margin-bottom:16px;font-family:monospace;"></div>
+    <input type="hidden" id="addKey"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:#3d4455;margin-bottom:5px;">Kommen</div>
+        <input type="time" id="addKommen"
+          style="width:100%;padding:10px;border:1px solid #dde0e8;border-radius:8px;
+          background:#eef0f4;color:#0f1623;font-family:monospace;font-size:15px;outline:none;"/>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#3d4455;margin-bottom:5px;">Gehen</div>
+        <input type="time" id="addGehen"
+          style="width:100%;padding:10px;border:1px solid #dde0e8;border-radius:8px;
+          background:#eef0f4;color:#0f1623;font-family:monospace;font-size:15px;outline:none;"/>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;color:#3d4455;margin-bottom:5px;">Notiz (optional)</div>
+      <input type="text" id="addNote"
+        style="width:100%;padding:10px;border:1px solid #dde0e8;border-radius:8px;
+        background:#eef0f4;color:#0f1623;font-size:14px;outline:none;"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeAddModal()"
+        style="padding:12px;border-radius:10px;border:1px solid #c4c9d8;
+        background:#eef0f4;color:#6b7280;font-size:14px;font-weight:600;cursor:pointer;">
+        Abbrechen
+      </button>
+      <button onclick="saveAddEntry()"
+        style="padding:12px;border-radius:10px;border:none;
+        background:#c41212;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+        Speichern
+      </button>
     </div>
   </div>
 </div>
