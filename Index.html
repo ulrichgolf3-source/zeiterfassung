@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<meta name="theme-color" content="#ffffff"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Zeiterfassung"/>
+<link rel="manifest" href="manifest.json"/>
+<title>Zeiterfassung</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f2f7;--white:#ffffff;
+  --red:#c0150f;--red-light:rgba(192,21,15,0.10);
+  --green:#1e9e4a;--green-light:rgba(30,158,74,0.10);
+  --ink:#111111;--ink2:#444444;--muted:#888888;
+  --border:#e0e0e5;--border2:#cccccc;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:14px;--r2:10px;
+}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100dvh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top,0);padding-bottom:env(safe-area-inset-bottom,0);}
+header{background:var(--white);padding:14px 18px 10px;border-bottom:2px solid var(--red);}
+.header-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.logo{font-size:19px;font-weight:700;letter-spacing:.5px;color:var(--ink)}
+.logo span{color:var(--red)}
+.header-date{font-size:13px;color:var(--muted)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--white);padding:0 0 10px}
+.tab{background:var(--white);border:1.5px solid var(--border2);border-radius:10px;color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:600;padding:10px 4px;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.tab.active{background:var(--red);border-color:var(--red);color:#fff}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
+.page{display:none;flex-direction:column;gap:12px}
+.page.active{display:flex}
+.card{background:var(--white);border-radius:var(--r);padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--red);text-transform:uppercase;margin-bottom:10px;font-weight:500;}
+.clock-big{font-family:var(--mono);font-size:52px;font-weight:400;color:var(--ink);letter-spacing:-1px;line-height:1;text-align:center;padding:8px 0 4px}
+.status-row{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.on{background:var(--green)}
+.dot.pulse{animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.status-txt{font-size:13px;color:var(--muted)}
+.elapsed{display:none;background:var(--green-light);border:1.5px solid rgba(30,158,74,.25);border-radius:var(--r2);padding:11px 16px;align-items:center;justify-content:space-between;}
+.elapsed.show{display:flex}
+.elapsed-lbl{font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:.5px}
+.elapsed-val{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--green)}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:none;border-radius:var(--r);font-family:var(--sans);font-size:16px;font-weight:700;padding:20px 10px;cursor:pointer;transition:all .12s;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn:active{transform:scale(.97)}
+.btn-green{background:var(--green);color:#fff}
+.btn-gray{background:#e0e0e5;color:#999;cursor:default}
+.btn-red-act{background:var(--red);color:#fff}
+.entry{border:1.5px solid var(--border);border-radius:var(--r2);padding:11px 13px;margin-bottom:8px;border-left:3px solid var(--green);}
+.entry:last-child{margin-bottom:0}
+.entry-top{display:flex;align-items:center;gap:8px}
+.entry-time{font-family:var(--mono);font-size:14px;color:var(--ink);flex:1}
+.entry-h{background:var(--red-light);color:var(--red);font-family:var(--mono);font-size:12px;font-weight:500;border-radius:20px;padding:3px 10px;}
+.entry-edit{background:none;border:1.5px solid var(--border2);border-radius:7px;font-size:13px;padding:4px 9px;cursor:pointer;color:var(--ink2)}
+.entry-del{background:none;border:none;font-size:16px;color:var(--muted);cursor:pointer;padding:4px 6px}
+.entry-note{font-size:11px;color:var(--muted);margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
+.note-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+textarea,input[type=text],input[type=date],input[type=time]{width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r2);padding:11px 13px;color:var(--ink);font-family:var(--sans);font-size:14px;outline:none;transition:border .15s;-webkit-appearance:none;resize:none;}
+textarea:focus,input:focus{border-color:var(--red)}
+.voice-btn{width:100%;background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r2);padding:13px;color:var(--ink2);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;transition:all .15s;}
+.voice-btn.rec{background:var(--red-light);border-color:var(--red);color:var(--red)}
+.week-nav-bar{display:flex;align-items:center;justify-content:space-between}
+.week-arrow{background:var(--bg);border:1.5px solid var(--border2);border-radius:8px;font-size:16px;padding:6px 14px;cursor:pointer;color:var(--ink2);transition:all .12s;}
+.week-arrow:active{background:var(--red);border-color:var(--red);color:#fff}
+.week-range{font-family:var(--mono);font-size:12px;color:var(--ink2);text-align:center}
+.week-sum{background:var(--red);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;}
+.week-sum-lbl{color:rgba(255,255,255,.8);font-size:14px}
+.week-sum-val{color:#fff;font-family:var(--mono);font-size:22px;font-weight:500}
+.day-card{background:var(--white);border-radius:var(--r);padding:14px 16px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:10px}
+.day-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.day-name{font-size:16px;font-weight:700;color:var(--ink)}
+.day-date{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:1px}
+.day-total{background:var(--red-light);color:var(--red);font-family:var(--mono);font-size:13px;font-weight:500;border-radius:20px;padding:3px 11px}
+.day-empty{font-size:13px;color:var(--muted);font-style:italic}
+.form-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--red);text-transform:uppercase;margin-bottom:5px}
+.date-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.exp-btn{width:100%;border-radius:var(--r2);padding:14px;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;border:1.5px solid transparent;}
+.exp-btn:active{transform:scale(.98)}
+.btn-day{background:var(--red-light);border-color:rgba(192,21,15,.3);color:var(--red)}
+.btn-range{background:rgba(217,119,0,.08);border-color:rgba(217,119,0,.3);color:#b36200}
+.btn-cur{background:rgba(26,111,212,.08);border-color:rgba(26,111,212,.3);color:#1a5fbb}
+.btn-danger{background:var(--red-light);border-color:rgba(192,21,15,.3);color:var(--red)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--white);border-radius:var(--r) var(--r) 0 0;padding:20px;width:100%;max-width:500px;animation:up .22s ease}
+@keyframes up{from{transform:translateY(60%);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:16px}
+.modal-row{margin-bottom:12px}
+.modal-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.modal-save{background:var(--red);color:#fff;border:none;border-radius:var(--r2);padding:14px;font-family:var(--sans);font-weight:700;font-size:15px;cursor:pointer}
+.modal-cancel{background:var(--bg);border:1.5px solid var(--border2);color:var(--ink2);border-radius:var(--r2);padding:14px;font-family:var(--sans);font-weight:600;font-size:15px;cursor:pointer}
+.empty{text-align:center;padding:20px;color:var(--muted);font-size:13px}
+.space{height:16px}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-top">
+    <div class="logo"><span>ZEIT</span>ERFASSUNG</div>
+    <div class="header-date" id="hDate"></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="goPage('heute',this)">Heute</button>
+    <button class="tab" onclick="goPage('woche',this)">Woche</button>
+    <button class="tab" onclick="goPage('export',this)">Export</button>
+  </div>
+</header>
+<main>
+<!-- HEUTE -->
+<div id="page-heute" class="page active">
+  <div class="card">
+    <div class="card-label">Aktuelle Zeit</div>
+    <div class="clock-big" id="clock">--:--:--</div>
+    <div class="status-row"><div class="dot" id="dot"></div><div class="status-txt" id="stxt">Nicht eingestempelt</div></div>
+  </div>
+  <div class="elapsed" id="elapsed">
+    <span class="elapsed-lbl">⏱ LAUFZEIT</span>
+    <span class="elapsed-val" id="elval">0:00</span>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-green" id="btnK" onclick="kommen()">▶ Kommen</button>
+    <button class="btn btn-gray"  id="btnG" onclick="gehen()" disabled>■ Gehen</button>
+  </div>
+  <div class="card">
+    <div class="card-label">Notizen zur Schicht</div>
+    <textarea id="notiz" rows="3" placeholder="Hier tippen oder Spracheingabe nutzen…"></textarea>
+    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤 Spracheingabe starten</button>
+  </div>
+  <div class="card">
+    <div class="card-label">Heutige Einträge</div>
+    <div id="todayList"><div class="empty">Noch keine Einträge</div></div>
+  </div>
+  <div class="space"></div>
+</div>
+<!-- WOCHE -->
+<div id="page-woche" class="page">
+  <div class="card">
+    <div class="card-label" style="margin-bottom:8px">Wochenübersicht</div>
+    <div class="week-nav-bar">
+      <button class="week-arrow" onclick="shiftW(-1)">‹</button>
+      <div class="week-range" id="wRange"></div>
+      <button class="week-arrow" onclick="shiftW(1)">›</button>
+    </div>
+  </div>
+  <div class="week-sum"><span class="week-sum-lbl">Wochensumme</span><span class="week-sum-val" id="wTotal">0,00 h</span></div>
+  <div id="weekDays"></div>
+  <div class="space"></div>
+</div>
+<!-- EXPORT -->
+<div id="page-export" class="page">
+  <div class="card">
+    <div class="card-label">Mitarbeiterdaten</div>
+    <div style="font-size:13px;color:var(--ink2);margin-bottom:6px">Name (optional)</div>
+    <input type="text" id="expName" placeholder="z.B. Neal Ulrich"/>
+  </div>
+  <div class="card">
+    <div class="card-label">📄 Tagesexport</div>
+    <div style="font-size:13px;color:var(--ink2);margin-bottom:8px">Tag wählen</div>
+    <input type="date" id="expDay"/>
+    <button class="exp-btn btn-day" onclick="exportDay()">⬇️ Tagesnachweis exportieren</button>
+  </div>
+  <div class="card">
+    <div class="card-label">📅 Wochenexport</div>
+    <div class="date-pair">
+      <div><div class="form-label">Von</div><input type="date" id="expVon"/></div>
+      <div><div class="form-label">Bis</div><input type="date" id="expBis"/></div>
+    </div>
+    <button class="exp-btn btn-range" onclick="exportRange()">⬇️ Zeitraum als PDF exportieren</button>
+    <button class="exp-btn btn-cur" onclick="exportCurrentWeek()">📅 Aktuelle Woche exportieren</button>
+  </div>
+  <div class="card">
+    <div class="card-label">Datenverwaltung</div>
+    <button class="exp-btn btn-danger" onclick="clearAll()">🗑 Alle Daten löschen</button>
+  </div>
+  <div class="space"></div>
+</div>
+</main>
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Eintrag bearbeiten</div>
+    <div class="modal-row"><div class="modal-lbl">Kommen</div><input type="time" id="mK"/></div>
+    <div class="modal-row"><div class="modal-lbl">Gehen</div><input type="time" id="mG"/></div>
+    <div class="modal-row"><div class="modal-lbl">Notiz</div><textarea id="mN" rows="2"></textarea></div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">Abbrechen</button>
+      <button class="modal-save" onclick="saveEdit()">Speichern</button>
+    </div>
+  </div>
+</div>
+<script>
+let S={running:false,kommenTime:null,entries:{}};
+let weekOff=0,editKey=null,editIdx=null,clockT=null,elT=null,voiceRec=null,voiceOn=false,voiceText='';
+
+function save(){localStorage.setItem('zerf_v3',JSON.stringify(S));}
+function load(){try{const r=localStorage.getItem('zerf_v3');if(r)S=JSON.parse(r);}catch(e){}if(!S.entries)S.entries={};}
+function p2(n){return String(n).padStart(2,'0');}
+function todayKey(){const d=new Date();return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;}
+function isoDate(d){return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;}
+function fmtTime(iso){const d=new Date(iso);return `${p2(d.getHours())}:${p2(d.getMinutes())}`;}
+function fmtDec(h){return h.toFixed(2).replace('.',',')+' h';}
+function fmtEl(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60),hh=Math.floor(m/60);return hh>0?`${hh}:${p2(m%60)}:${p2(s%60)}`:`${m}:${p2(s%60)}`;}
+function msToH(ms){return ms/3600000;}
+function getMonday(off){const d=new Date();d.setHours(12,0,0,0);const day=d.getDay()||7;d.setDate(d.getDate()-day+1+off*7);return d;}
+
+function startClock(){clockT&&clearInterval(clockT);tick();clockT=setInterval(tick,1000);}
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('de-DE');}
+
+function startEl(){elT&&clearInterval(elT);elT=setInterval(upEl,1000);upEl();}
+function stopEl(){elT&&clearInterval(elT);elT=null;document.getElementById('elapsed').classList.remove('show');}
+function upEl(){if(!S.kommenTime)return;document.getElementById('elval').textContent=fmtEl(Date.now()-new Date(S.kommenTime).getTime());document.getElementById('elapsed').classList.add('show');}
+
+function kommen(){if(S.running)return;S.running=true;S.kommenTime=new Date().toISOString();save();refreshUI();startEl();}
+function gehen(){
+  if(!S.running)return;
+  const note=document.getElementById('notiz').value.trim();
+  const key=todayKey();
+  if(!S.entries[key])S.entries[key]=[];
+  const ms=Date.now()-new Date(S.kommenTime).getTime();
+  S.entries[key].push({kommen:S.kommenTime,gehen:new Date().toISOString(),h:msToH(ms),note});
+  S.running=false;S.kommenTime=null;
+  document.getElementById('notiz').value='';
+  save();refreshUI();stopEl();renderWeek();
+}
+
+function refreshUI(){
+  const on=S.running;
+  document.getElementById('dot').className='dot'+(on?' on pulse':'');
+  document.getElementById('stxt').textContent=on?'Eingestempelt seit '+fmtTime(S.kommenTime):'Nicht eingestempelt';
+  document.getElementById('btnK').className='btn '+(on?'btn-gray':'btn-green');
+  document.getElementById('btnK').disabled=on;
+  document.getElementById('btnG').className='btn '+(on?'btn-red-act':'btn-gray');
+  document.getElementById('btnG').disabled=!on;
+  document.getElementById('hDate').textContent=new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long'});
+  renderToday();
+}
+
+function entryHtml(key,entries){
+  return entries.map((e,i)=>`
+    <div class="entry">
+      <div class="entry-top">
+        <div class="entry-time">${fmtTime(e.kommen)} – ${fmtTime(e.gehen)}</div>
+        <div class="entry-h">${fmtDec(e.h)}</div>
+        <button class="entry-edit" onclick="openEdit('${key}',${i})">✏️</button>
+        <button class="entry-del" onclick="delEntry('${key}',${i})">×</button>
+      </div>
+      ${e.note?`<div class="entry-note"><div class="note-lbl">🗒 Tätigkeiten</div>${e.note}</div>`:''}
+    </div>`).join('');
+}
+
+function renderToday(){
+  const entries=S.entries[todayKey()]||[];
+  document.getElementById('todayList').innerHTML=entries.length?entryHtml(todayKey(),entries):'<div class="empty">Noch keine Einträge</div>';
+}
+
+function delEntry(key,i){
+  if(!confirm('Eintrag löschen?'))return;
+  S.entries[key].splice(i,1);
+  if(!S.entries[key].length)delete S.entries[key];
+  save();refreshUI();renderWeek();
+}
+
+function openEdit(key,idx){
+  editKey=key;editIdx=idx;
+  const e=S.entries[key][idx];
+  const k=new Date(e.kommen),g=new Date(e.gehen);
+  document.getElementById('mK').value=`${p2(k.getHours())}:${p2(k.getMinutes())}`;
+  document.getElementById('mG').value=`${p2(g.getHours())}:${p2(g.getMinutes())}`;
+  document.getElementById('mN').value=e.note||'';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');editKey=null;editIdx=null;}
+function saveEdit(){
+  if(editKey===null)return;
+  const[kh,km]=document.getElementById('mK').value.split(':').map(Number);
+  const[gh,gm]=document.getElementById('mG').value.split(':').map(Number);
+  const note=document.getElementById('mN').value.trim();
+  const base=new Date(editKey+'T12:00:00');
+  const kD=new Date(base);kD.setHours(kh,km,0,0);
+  const gD=new Date(base);gD.setHours(gh,gm,0,0);
+  const ms=gD-kD;
+  if(ms<=0){alert('Gehen muss nach Kommen liegen');return;}
+  S.entries[editKey][editIdx]={kommen:kD.toISOString(),gehen:gD.toISOString(),h:msToH(ms),note};
+  save();refreshUI();renderWeek();closeModal();
+}
+
+function shiftW(d){weekOff+=d;renderWeek();}
+function renderWeek(){
+  const mon=getMonday(weekOff);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  document.getElementById('wRange').textContent=
+    mon.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})+'. – '+
+    sun.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  const names=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+  let total=0;
+  document.getElementById('weekDays').innerHTML=names.map((name,i)=>{
+    const d=new Date(mon);d.setDate(mon.getDate()+i);
+    const key=isoDate(d);
+    const entries=S.entries[key]||[];
+    const dayH=entries.reduce((s,e)=>s+e.h,0);
+    total+=dayH;
+    return `<div class="day-card">
+      <div class="day-head">
+        <div><div class="day-name">${name}</div><div class="day-date">${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}.</div></div>
+        ${dayH>0?`<div class="day-total">${fmtDec(dayH)}</div>`:'<span style="color:var(--muted)">–</span>'}
+      </div>
+      ${entries.length?entryHtml(key,entries):'<div class="day-empty">Kein Eintrag</div>'}
+    </div>`;
+  }).join('');
+  document.getElementById('wTotal').textContent=fmtDec(total);
+}
+
+function goPage(page,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  btn.classList.add('active');
+  if(page==='woche')renderWeek();
+  if(page==='export')setExportDefaults();
+}
+
+function setExportDefaults(){
+  const mon=getMonday(weekOff);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  document.getElementById('expVon').value=isoDate(mon);
+  document.getElementById('expBis').value=isoDate(sun);
+  document.getElementById('expDay').value=todayKey();
+}
+
+// Voice
+function toggleVoice(){
+  if(voiceOn){stopVoice();}else{startVoice();}
+}
+function startVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Spracheingabe wird in diesem Browser nicht unterstützt.');return;}
+  voiceRec=new SR();voiceRec.lang='de-DE';voiceRec.continuous=true;voiceRec.interimResults=true;
+  voiceText=document.getElementById('notiz').value;
+  voiceRec.onresult=e=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)voiceText+=(voiceText?' ':'')+e.results[i][0].transcript.trim();
+      else interim=e.results[i][0].transcript;
+    }
+    document.getElementById('notiz').value=voiceText+(interim?' '+interim:'');
+  };
+  voiceRec.onerror=()=>stopVoice();
+  voiceRec.onend=()=>{if(voiceOn)voiceRec.start();};
+  voiceRec.start();voiceOn=true;
+  const b=document.getElementById('voiceBtn');b.className='voice-btn rec';b.textContent='⏹ Aufnahme stoppen';
+}
+function stopVoice(){
+  voiceOn=false;if(voiceRec)try{voiceRec.stop();}catch(e){}voiceRec=null;
+  document.getElementById('notiz').value=voiceText;
+  const b=document.getElementById('voiceBtn');b.className='voice-btn';b.textContent='🎤 Spracheingabe starten';
+}
+
+// PDF
+function buildPDF(titleLine, filteredEntries, name){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const PW=210,M=16;
+  const RED=[192,21,15],DGRY=[80,85,90],LGRY=[245,245,245],WHT=[255,255,255],BLK=[20,20,20],MGRY=[210,210,215];
+
+  // Header white bg
+  doc.setFillColor(...WHT);doc.rect(0,0,PW,50,'F');
+  // Red top stripe
+  doc.setFillColor(...RED);doc.rect(0,0,PW,3,'F');
+  // Title
+  doc.setTextColor(...RED);doc.setFont('helvetica','bold');doc.setFontSize(20);
+  doc.text('STUNDENNACHWEIS',M,18);
+  // Subtitle
+  doc.setTextColor(...DGRY);doc.setFont('helvetica','normal');doc.setFontSize(9);
+  doc.text(titleLine,M,27);
+  if(name){doc.setTextColor(...BLK);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(name,M,35);}
+  doc.setTextColor(160,160,160);doc.setFont('helvetica','normal');doc.setFontSize(8);
+  doc.text('Erstellt: '+new Date().toLocaleString('de-DE'),M,44);
+  // Red line
+  doc.setDrawColor(...RED);doc.setLineWidth(0.8);doc.line(0,50,PW,50);
+  // Content bg
+  doc.setFillColor(...LGRY);doc.rect(0,50,PW,247,'F');
+
+  let y=60,totalH=0;
+  const days=Object.keys(filteredEntries).sort();
+  if(!days.length){
+    doc.setTextColor(...DGRY);doc.setFontSize(11);doc.text('Keine Einträge im gewählten Zeitraum.',M,y);
+  }
+  days.forEach(key=>{
+    const entries=filteredEntries[key];if(!entries||!entries.length)return;
+    const d=new Date(key+'T12:00:00');
+    const dayLabel=d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+    const dayH=entries.reduce((s,e)=>s+e.h,0);
+    // Day header bar
+    doc.setFillColor(...RED);doc.rect(M,y,PW-2*M,8,'F');
+    doc.setTextColor(...WHT);doc.setFont('helvetica','bold');doc.setFontSize(9);
+    doc.text(dayLabel,M+3,y+5.5);
+    doc.text(fmtDec(dayH),PW-M-3,y+5.5,{align:'right'});
+    y+=10;
+    // Column headers
+    doc.setFillColor(...MGRY);doc.rect(M,y,PW-2*M,6,'F');
+    doc.setTextColor(...DGRY);doc.setFont('helvetica','normal');doc.setFontSize(8);
+    doc.text('ZEIT',M+3,y+4);doc.text('DAUER',M+50,y+4);doc.text('TÄTIGKEIT / NOTIZ',M+80,y+4);
+    y+=8;
+    entries.forEach(e=>{
+      totalH+=e.h;
+      doc.setFillColor(...WHT);doc.rect(M,y-1,PW-2*M,8,'F');
+      doc.setDrawColor(...MGRY);doc.setLineWidth(0.3);doc.line(M,y+7,PW-M,y+7);
+      // Red left border
+      doc.setFillColor(...RED);doc.rect(M,y-1,1.5,8,'F');
+      doc.setTextColor(...BLK);doc.setFont('helvetica','normal');doc.setFontSize(9);
+      doc.text(`${fmtTime(e.kommen)} – ${fmtTime(e.gehen)}`,M+4,y+4.5);
+      doc.setTextColor(...RED);doc.setFont('helvetica','bold');
+      doc.text(fmtDec(e.h),M+53,y+4.5);
+      if(e.note){doc.setTextColor(...DGRY);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(e.note,M+83,y+4.5,{maxWidth:PW-M-83-M});}
+      y+=9;
+      if(y>270){doc.addPage();doc.setFillColor(...LGRY);doc.rect(0,0,PW,297,'F');y=15;}
+    });
+    y+=4;
+  });
+  // Total bar
+  if(y>270){doc.addPage();y=15;}
+  doc.setFillColor(...RED);doc.rect(M,y,PW-2*M,10,'F');
+  doc.setTextColor(...WHT);doc.setFont('helvetica','bold');doc.setFontSize(11);
+  doc.text('GESAMTSTUNDEN',M+3,y+7);
+  doc.text(fmtDec(totalH),PW-M-3,y+7,{align:'right'});
+  // Footer
+  doc.setTextColor(180,180,180);doc.setFont('helvetica','normal');doc.setFontSize(7);
+  doc.text('AMAND Bau NRW GmbH & Co. KG  ·  Stundennachweis',PW/2,290,{align:'center'});
+  return doc;
+}
+
+function fmtTime(iso){const d=new Date(iso);return `${p2(d.getHours())}:${p2(d.getMinutes())}`;}
+function fmtDec(h){return h.toFixed(2).replace('.',',')+' h';}
+
+function filterEntries(from,to){
+  const result={};
+  Object.keys(S.entries).forEach(key=>{
+    if(key>=from&&key<=to)result[key]=S.entries[key];
+  });
+  return result;
+}
+
+function exportDay(){
+  const day=document.getElementById('expDay').value;
+  const name=document.getElementById('expName').value||'';
+  if(!day){alert('Bitte Tag wählen');return;}
+  const d=new Date(day+'T12:00:00');
+  const title=d.toLocaleDateString('de-DE',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+  const doc=buildPDF(title,filterEntries(day,day),name);
+  doc.save(`Tagesnachweis_${day}.pdf`);
+}
+
+function exportRange(){
+  const von=document.getElementById('expVon').value;
+  const bis=document.getElementById('expBis').value;
+  const name=document.getElementById('expName').value||'';
+  if(!von||!bis){alert('Bitte Datum ausfüllen');return;}
+  const v=new Date(von+'T12:00:00'),b=new Date(bis+'T12:00:00');
+  const title=`${v.toLocaleDateString('de-DE')} – ${b.toLocaleDateString('de-DE')}`;
+  const doc=buildPDF(title,filterEntries(von,bis),name);
+  doc.save(`Stundennachweis_${von}_${bis}.pdf`);
+}
+
+function exportCurrentWeek(){
+  const mon=getMonday(weekOff);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const von=isoDate(mon),bis=isoDate(sun);
+  const name=document.getElementById('expName').value||'';
+  const title=`KW – ${mon.toLocaleDateString('de-DE')} bis ${sun.toLocaleDateString('de-DE')}`;
+  const doc=buildPDF(title,filterEntries(von,bis),name);
+  doc.save(`Wochennachweis_${von}.pdf`);
+}
+
+function clearAll(){
+  if(!confirm('Wirklich alle Daten löschen?'))return;
+  S={running:false,kommenTime:null,entries:{}};
+  save();refreshUI();renderWeek();
+}
+
+load();
+if(S.running)startEl();
+startClock();refreshUI();renderWeek();setExportDefaults();
+</script>
+</body>
+</html>
