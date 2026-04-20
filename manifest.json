@@ -1,0 +1,22 @@
+{
+  "name": "Zeiterfassung",
+  "short_name": "Zeiterfassung",
+  "description": "Zeiterfassung App für die Schweiz",
+  "start_url": "https://zeiterfassungnealu.netlify.app/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://zeiterfassungnealu.netlify.app/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://zeiterfassungnealu.netlify.app/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

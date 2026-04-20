@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#c41212" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Zeiterfassung" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Zeiterfassung</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Force colors even if fonts fail */
+    :root {
+      --bg:#f4f5f7 !important;
+      --surface:#ffffff !important;
+      --surface2:#eef0f4 !important;
+      --border:#dde0e8 !important;
+      --border2:#c4c9d8 !important;
+      --accent:#c41212 !important;
+      --accent-dim:rgba(196,18,18,0.09) !important;
+      --green:#1a8f4e !important;
+      --green-bg:#1a8f4e !important;
+      --green-dim:rgba(26,143,78,0.10) !important;
+      --red:#c41212 !important;
+      --red-bg:#c41212 !important;
+      --red-dim:rgba(196,18,18,0.10) !important;
+      --blue:#1555b7 !important;
+      --blue-dim:rgba(21,85,183,0.10) !important;
+      --amber:#b85e00 !important;
+      --amber-dim:rgba(184,94,0,0.10) !important;
+      --text:#0f1623 !important;
+      --muted:#3d4455 !important;
+      --muted2:#6b7280 !important;
+      --mono:'DM Mono',ui-monospace,monospace !important;
+      --sans:'DM Sans',-apple-system,sans-serif !important;
+      --radius:14px !important;
+    }
+    /* Critical overrides */
+    .tab.active { background:#c41212 !important; color:#fff !important; border-color:#c41212 !important; }
+    .btn-green { background:#1a8f4e !important; border-color:#1a8f4e !important; color:#fff !important; }
+    .btn-red { background:#c41212 !important; border-color:#c41212 !important; color:#fff !important; }
+    .btn-red:disabled,.btn-green:disabled { background:#eef0f4 !important; border-color:#c4c9d8 !important; color:#6b7280 !important; }
+    .card-label { color:#c41212 !important; }
+    .week-summary { background:#c41212 !important; }
+    .week-sum-val { color:#fff !important; }
+    .week-sum-label { color:rgba(255,255,255,0.85) !important; }
+    .day-hours { color:#c41212 !important; background:rgba(196,18,18,0.09) !important; border-color:rgba(196,18,18,0.2) !important; }
+    .logo em { color:#c41212 !important; }
+    header { border-bottom:3px solid #c41212 !important; }
+    .entry-dur { color:#c41212 !important; background:rgba(196,18,18,0.09) !important; }
+    .day-total { background:#c41212 !important; }
+    .day-total-label,.day-total-val { color:#fff !important; }
+    .live-clock.running { color:#1a8f4e !important; }
+    .status-dot.running { background:#1a8f4e !important; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f4f5f7;
+      --surface:    #ffffff;
+      --surface2:   #eef0f4;
+      --border:     #dde0e8;
+      --border2:    #c4c9d8;
+
+      /* Hauptakzent */
+      --accent:     #c41212;
+      --accent-dim: rgba(196,18,18,0.09);
+      --accent-text:#ffffff;
+
+      /* Grün — Kommen */
+      --green:      #1a8f4e;
+      --green-bg:   #1a8f4e;
+      --green-dim:  rgba(26,143,78,0.10);
+
+      /* Rot — Gehen */
+      --red:        #c41212;
+      --red-bg:     #c41212;
+      --red-dim:    rgba(196,18,18,0.10);
+
+      /* Blau — Export sekundär */
+      --blue:       #1555b7;
+      --blue-dim:   rgba(21,85,183,0.10);
+
+      /* Amber — Export primär */
+      --amber:      #b85e00;
+      --amber-dim:  rgba(184,94,0,0.10);
+
+      /* Grau Töne */
+      --text:       #0f1623;
+      --muted:      #3d4455;
+      --muted2:     #6b7280;
+
+      --green: #1a8f4e;
+      --green-dim: rgba(26,143,78,0.12);
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+      --radius: 14px;
+    }
+
+    html { height: 100%; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    /* ── Header ─────────────────────────── */
+    header {
+      padding: 14px 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--accent);
+      position: sticky;
+      top: 0;
+      background: #ffffff;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .logo {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      color: var(--text);
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .logo em { color: var(--accent); font-style: normal; }
+
+    /* ── Tab bar ─────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 4px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--muted2);
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* ── Main scroll area ────────────────── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Page sections ───────────────────── */
+    .page { display: none; flex-direction: column; gap: 14px; }
+    .page.active { display: flex; }
+
+    /* ── Card ────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .card-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    /* ── Clock display ───────────────────── */
+    .clock-wrap {
+      text-align: center;
+      padding: 8px 0;
+    }
+    .live-clock {
+      font-family: var(--mono);
+      font-size: 48px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--text);
+      transition: color 0.3s;
+    }
+    .live-clock.running { color: var(--green); }
+    .status-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      margin-right: 6px;
+      transition: background 0.3s;
+      vertical-align: middle;
+    }
+    .status-dot.running {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .status-text {
+      font-size: 12px;
+      color: var(--muted2);
+      margin-top: 8px;
+      font-family: var(--mono);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Big buttons ─────────────────────── */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      letter-spacing: 0.01em;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-green {
+      background: var(--green-bg);
+      border-color: var(--green);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      box-shadow: 0 3px 10px rgba(26,143,78,0.30);
+    }
+    .btn-green:hover:not(:disabled) { background: #166e3d; }
+    .btn-green:disabled {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--muted2);
+      box-shadow: none;
+      cursor: default;
+    }
+    .btn-red {
+      background: var(--red-bg);
+      border-color: var(--red);
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      box-shadow: 0 3px 10px rgba(196,18,18,0.28);
+    }
+    .btn-red:hover:not(:disabled) { background: #a30f0f; }
+    .btn-red:disabled {
+      background: var(--surface2);
+      border-color: var(--border);
+      color: var(--muted2);
+      box-shadow: none;
+      cursor: default;
+    }
+    .btn-full {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border2);
+      background: var(--surface2);
+      color: var(--muted2);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-full:active { transform: scale(0.98); }
+    .btn-accent {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    /* ── Elapsed timer ───────────────────── */
+    .elapsed-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .elapsed-label { font-size: 12px; color: var(--muted2); }
+    .elapsed-val {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    /* ── Notizen textarea ────────────────── */
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      resize: none;
+      outline: none;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--border2); }
+    textarea::placeholder { color: var(--muted); }
+
+    /* ── Today's entries ─────────────────── */
+    .entry-list { display: flex; flex-direction: column; gap: 8px; }
+    .entry-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .entry-times {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .entry-time-range {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+    }
+    .entry-dur {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--accent-dim);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .entry-note {
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.4;
+      margin-top: 4px;
+    }
+    .entry-delete {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      font-size: 14px;
+    }
+    .entry-delete:hover { color: var(--red); }
+
+    /* ── Day total row ───────────────────── */
+    .day-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      margin-top: 4px;
+    }
+    .day-total-label { font-size: 13px; color: #ffffff; font-weight: 700; }
+    .day-total-val { font-family: var(--mono); font-size: 14px; color: #ffffff; font-weight: 700; }
+
+    /* ── Week view ───────────────────────── */
+    .week-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .week-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .week-nav button {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted2);
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .week-nav button:active { transform: scale(0.95); }
+    .week-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted2);
+      letter-spacing: 0.04em;
+    }
+
+    .day-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .day-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid transparent;
+    }
+    .day-card-header.has-data { border-bottom-color: var(--border); }
+    .day-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .day-name.today { color: var(--accent); }
+    .day-date-sm {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .day-hours {
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--accent);
+      font-weight: 700;
+      background: var(--accent-dim);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(196,18,18,0.2);
+    }
+    .day-hours.zero { color: var(--muted2); background: none; border-color: transparent; font-weight: 400; }
+    .day-detail { padding: 12px 16px; }
+    .day-empty-hint {
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+      padding: 4px 16px 12px;
+    }
+
+    /* Notes block in week view */
+    .week-note-block {
+      background: rgba(122,132,168,0.06);
+      border-left: 2px solid var(--border2);
+      border-radius: 0 6px 6px 0;
+      padding: 7px 10px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.5;
+    }
+    .week-note-block .note-label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-family: var(--mono);
+    }
+    .week-note-text {
+      color: #a8b3d0;
+      font-size: 13px;
+    }
+
+    /* ── Week summary bar ────────────────── */
+    .week-summary {
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 3px 10px rgba(196,18,18,0.25);
+    }
+    .week-sum-label { font-size: 13px; color: rgba(255,255,255,0.8); }
+    .week-sum-val { font-family: var(--mono); font-size: 22px; color: #ffffff; font-weight: 700; }
+
+    /* ── PDF button ──────────────────────── */
+    .pdf-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .btn-pdf {
+      background: rgba(255,181,71,0.08);
+      border: 1px solid var(--amber);
+      color: var(--amber);
+      padding: 14px;
+      border-radius: 12px;
+      width: 100%;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.15s;
+    }
+    .btn-pdf:active { transform: scale(0.98); }
+
+    /* ── Empty state ─────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── Bottom safe area ────────────────── */
+    .bottom-space { height: 20px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><em>Zeit</em>erfassung</div>
+  <div id="headerDate" style="font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPage('heute')">Heute</button>
+  <button class="tab" onclick="showPage('woche')">Woche</button>
+    <button class="tab" onclick="showPage('export')">Export</button>
+</div>
+
+<main>
+  <!-- ══ HEUTE ══════════════════════════════ -->
+  <div id="page-heute" class="page active">
+
+    <div class="card">
+      <div class="card-label">Aktuelle Zeit</div>
+      <div class="clock-wrap">
+        <div class="live-clock" id="liveClock">00:00:00</div>
+        <div class="status-text">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Nicht eingestempelt</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="elapsed-card" id="elapsedRow" style="display:none">
+        <span class="elapsed-label">⏱ Laufzeit</span>
+        <span class="elapsed-val" id="elapsedVal">00:00</span>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-green" id="btnKommen" onclick="stempelKommen()">▶ Kommen</button>
+      <button class="btn btn-red" id="btnGehen" onclick="stempelGehen()" disabled>■ Gehen</button>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Notizen zur Schicht</div>
+      <textarea id="notizInput" rows="3" placeholder="Hier tippen oder Spracheingabe nutzen..."></textarea>
+      <button id="voiceBtn" onclick="toggleVoice()"
+        style="width:100%;margin-top:8px;padding:11px;border-radius:10px;
+        border:2px solid var(--border2);background:var(--surface2);
+        color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:600;
+        cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+        transition:all 0.2s;">
+        <span id="voiceBtnIcon">🎤</span>
+        <span id="voiceBtnText">Spracheingabe starten</span>
+      </button>
+      <div id="voiceStatus" style="display:none;margin-top:8px;padding:10px 14px;
+        border-radius:10px;background:#fef2f2;border:1px solid #fca5a5;
+        align-items:center;gap:10px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+          background:#e02020;animation:pulse 1s infinite;flex-shrink:0;"></span>
+        <span style="font-size:12px;color:#b91c1c;font-weight:500;" id="voiceStatusText">Aufnahme läuft...</span>
+      </div>
+      <div id="voicePreview" style="display:none;margin-top:6px;padding:8px 12px;
+        border-radius:8px;background:var(--surface2);border:1px solid var(--border);
+        font-size:12px;color:var(--muted2);font-style:italic;"></div>
+    </div>
+
+    <div class="card" id="todayEntriesCard">
+      <div class="card-label">Heutige Einträge</div>
+      <div class="entry-list" id="todayEntries">
+        <div class="empty">Noch keine Einträge heute.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ WOCHE ══════════════════════════════ -->
+  <div id="page-woche" class="page">
+
+    <div class="card" style="padding:14px 16px;">
+      <div class="week-header">
+        <div class="card-label" style="margin:0">Wochenübersicht</div>
+        <div class="week-nav">
+          <button onclick="changeWeek(-1)">‹</button>
+          <span class="week-title" id="weekTitle"></span>
+          <button onclick="changeWeek(1)">›</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="week-summary">
+      <span class="week-sum-label">Wochensumme</span>
+      <span class="week-sum-val" id="weekTotal">0,00 h</span>
+    </div>
+
+    <div id="weekDays"></div>
+
+  </div>
+
+  <!-- ══ EXPORT ══════════════════════════════ -->
+  <div id="page-export" class="page">
+
+    <!-- Name -->
+    <div class="card">
+      <div class="card-label" style="padding:14px 16px 0;">Mitarbeiterdaten</div>
+      <div style="padding:10px 16px 14px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Name (optional)</div>
+        <input type="text" id="exportName" placeholder="z.B. Neal Ulrich" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;" />
+      </div>
+    </div>
+
+    <!-- TAGESEXPORT -->
+    <div class="card" style="padding:14px 16px;">
+      <div class="card-label" style="margin-bottom:10px;">📄 Tagesexport</div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Tag wählen</div>
+        <input type="date" id="exportTag" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;" />
+      </div>
+      <button style="width:100%;padding:13px;border-radius:10px;border:1px solid var(--accent);background:var(--accent-dim);color:var(--accent);font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="exportDayPDF()">
+        ⬇ Tagesnachweis exportieren
+      </button>
+    </div>
+
+    <!-- WOCHENEXPORT -->
+    <div class="card" style="padding:14px 16px;">
+      <div class="card-label" style="margin-bottom:10px;">📅 Wochenexport</div>
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Von</div>
+          <input type="date" id="exportVon" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;" />
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Bis</div>
+          <input type="date" id="exportBis" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;" />
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button style="width:100%;padding:13px;border-radius:10px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="exportPDF()">
+          ⬇ Zeitraum als PDF exportieren
+        </button>
+        <button style="width:100%;padding:13px;border-radius:10px;border:1px solid var(--blue);background:var(--blue-dim);color:var(--blue);font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="exportWeekPDF()">
+          📅 Aktuelle Woche exportieren
+        </button>
+      </div>
+    </div>
+
+    <!-- Datenverwaltung -->
+    <div class="card" style="padding:14px 16px;">
+      <div class="card-label" style="margin-bottom:10px;">Datenverwaltung</div>
+      <button class="btn-full" onclick="clearAll()" style="border-color:var(--red);color:var(--red);background:var(--red-dim);">
+        🗑 Alle Daten löschen
+      </button>
+    </div>
+
+  </div>
+
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════
+let state = {
+  running: false,
+  kommenTime: null,   // ISO string
+  entries: {},        // { "2024-03-04": [{kommen, gehen, durationH, durationDec, note}] }
+};
+
+let timerInterval = null;
+let currentWeekOffset = 0;  // 0 = this week
+
+// ═══════════════════════════════════════════════════
+// Persist
+// ═══════════════════════════════════════════════════
+function save() {
+  localStorage.setItem('zerf_v2', JSON.stringify(state));
+}
+function load() {
+  const raw = localStorage.getItem('zerf_v2');
+  if (raw) {
+    try { state = JSON.parse(raw); } catch(e) {}
+  }
+  if (!state.entries) state.entries = {};
+}
+
+// ═══════════════════════════════════════════════════
+// Utilities
+// ═══════════════════════════════════════════════════
+function todayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function fmtTime(date) {
+  return new Date(date).toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+}
+
+function fmtDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('de-DE', {weekday:'short', day:'2-digit', month:'2-digit'});
+}
+
+function decimalHours(ms) {
+  return ms / 3600000;
+}
+
+function fmtDecimal(h) {
+  return h.toFixed(2).replace('.', ',') + ' h';
+}
+
+function fmtHHMM(ms) {
+  const totalMin = Math.floor(ms / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+// ═══════════════════════════════════════════════════
+// Clock
+// ═══════════════════════════════════════════════════
+function startClock() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tickClock, 1000);
+  tickClock();
+}
+
+function tickClock() {
+  const now = new Date();
+  document.getElementById('liveClock').textContent =
+    now.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+  if (state.running && state.kommenTime) {
+    const elapsed = now - new Date(state.kommenTime);
+    document.getElementById('elapsedVal').textContent = fmtHHMM(elapsed);
+    document.getElementById('elapsedRow').style.display = 'flex';
+  }
+
+  const today = now.toLocaleDateString('de-DE', {weekday:'long', day:'numeric', month:'long'});
+  document.getElementById('headerDate').textContent = today;
+}
+// ═══════════════════════════════════════════════════
+// Stempel
+// ═══════════════════════════════════════════════════
+function stempelKommen() {
+  state.running = true;
+  state.kommenTime = new Date().toISOString();
+  save();
+  updateUI();
+}
+
+function stempelGehen() {
+  if (!state.running || !state.kommenTime) return;
+
+  const gehen = new Date();
+  const kommen = new Date(state.kommenTime);
+  const ms = gehen - kommen;
+  const note = document.getElementById('notizInput').value.trim();
+
+  const key = todayKey();
+  if (!state.entries[key]) state.entries[key] = [];
+
+  state.entries[key].push({
+    kommen: state.kommenTime,
+    gehen: gehen.toISOString(),
+    durationMs: ms,
+    durationH: decimalHours(ms),
+    note: note
+  });
+
+  state.running = false;
+  state.kommenTime = null;
+  document.getElementById('notizInput').value = '';
+
+  save();
+  updateUI();
+  renderWeek();
+}
+
+// ═══════════════════════════════════════════════════
+// UI Update
+// ═══════════════════════════════════════════════════
+function updateUI() {
+  const running = state.running;
+  const clock = document.getElementById('liveClock');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+
+  clock.classList.toggle('running', running);
+  dot.classList.toggle('running', running);
+  txt.textContent = running
+    ? 'Eingestempelt seit ' + fmtTime(state.kommenTime)
+    : 'Nicht eingestempelt';
+
+  document.getElementById('btnKommen').disabled = running;
+  document.getElementById('btnGehen').disabled = !running;
+
+  if (!running) document.getElementById('elapsedRow').style.display = 'none';
+
+  renderTodayEntries();
+}
+
+function renderTodayEntries() {
+  const key = todayKey();
+  const entries = state.entries[key] || [];
+  const container = document.getElementById('todayEntries');
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="empty">Noch keine Einträge heute.</div>';
+    return;
+  }
+
+  let totalMs = 0;
+  let html = '';
+  entries.forEach((e, i) => {
+    totalMs += e.durationMs;
+    html += `<div class="entry-item">
+      <div class="entry-times">
+        <span class="entry-time-range">${fmtTime(e.kommen)} – ${fmtTime(e.gehen)}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span class="entry-dur">${fmtDecimal(e.durationH)}</span>
+          <button onclick="editEntry('${key}', ${i})"
+            style="background:none;border:1px solid var(--border2);border-radius:6px;
+            color:var(--muted);font-size:12px;padding:3px 8px;cursor:pointer;">✏️</button>
+          <button class="entry-delete" onclick="deleteEntry('${key}', ${i})">✕</button>
+        </div>
+      </div>
+      ${e.note ? `<div class="entry-note">📝 ${e.note}</div>` : ''}
+    </div>`;
+  });
+
+  if (entries.length > 1) {
+    html += `<div class="day-total">
+      <span class="day-total-label">Tagesgesamt</span>
+      <span class="day-total-val">${fmtDecimal(decimalHours(totalMs))}</span>
+    </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+function deleteEntry(key, idx) {
+  if (!confirm('Eintrag löschen?')) return;
+  state.entries[key].splice(idx, 1);
+  if (state.entries[key].length === 0) delete state.entries[key];
+  save();
+  renderTodayEntries();
+  renderWeek();
+}
+
+// ═══════════════════════════════════════════════════
+// Week View
+// ═══════════════════════════════════════════════════
+function getWeekStart(offset = 0) {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon...
+  const diff = (day === 0 ? -6 : 1 - day); // Monday
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff + offset * 7);
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+
+function renderWeek() {
+  const monday = getWeekStart(currentWeekOffset);
+  const days = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+  const todayStr = todayKey();
+
+  const weekEnd = new Date(monday);
+  weekEnd.setDate(monday.getDate() + 6);
+  document.getElementById('weekTitle').textContent =
+    monday.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'}) + ' – ' +
+    weekEnd.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+
+  let weekTotalMs = 0;
+  let html = '';
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const ky = d.getFullYear();
+    const km = String(d.getMonth() + 1).padStart(2, '0');
+    const kd = String(d.getDate()).padStart(2, '0');
+    const key = ky + '-' + km + '-' + kd;
+    const entries = state.entries[key] || [];
+    const dayMs = entries.reduce((a, e) => a + (e.durationMs || 0), 0);
+    weekTotalMs += dayMs;
+
+    const isToday = key === todayStr;
+    const hasData = entries.length > 0;
+    const dateLabel = d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'});
+
+    let detailHtml = '';
+    if (hasData) {
+      // Collect all unique notes for the day
+      const allNotes = entries.filter(e => e.note).map(e => e.note);
+
+      entries.forEach((e, ei) => {
+        detailHtml += `<div class="entry-item" style="margin-bottom:6px;">
+          <div class="entry-times">
+            <span class="entry-time-range">${fmtTime(e.kommen)} – ${fmtTime(e.gehen)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="entry-dur">${fmtDecimal(e.durationH)}</span>
+              <button onclick="editEntry('${key}', ${ei})"
+                style="background:none;border:1px solid var(--border2);border-radius:6px;
+                color:var(--muted);font-size:12px;padding:3px 8px;cursor:pointer;">✏️</button>
+              <button onclick="deleteEntry('${key}', ${ei})"
+                style="background:none;border:none;color:var(--muted);font-size:13px;
+                cursor:pointer;padding:3px 4px;">✕</button>
+            </div>
+          </div>
+        </div>`;
+      });
+
+      // Day total if multiple entries
+      if (entries.length > 1) {
+        detailHtml += `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+          <span style="font-family:var(--mono);font-size:12px;color:var(--accent);background:var(--accent-dim);padding:3px 10px;border-radius:20px;">∑ ${fmtDecimal(decimalHours(dayMs))}</span>
+        </div>`;
+      }
+
+      // Notes block — shown always if any notes exist
+      if (allNotes.length > 0) {
+        detailHtml += `<div class="week-note-block">
+          <div class="note-label">📋 Tätigkeiten</div>
+          ${allNotes.map(n => `<div class="week-note-text">· ${n}</div>`).join('')}
+        </div>`;
+      }
+    }
+
+    html += `<div class="day-card" style="margin-bottom:8px;">
+      <div class="day-card-header ${hasData?'has-data':''}">
+        <div>
+          <div class="day-name ${isToday?'today':''}">${days[i]}${isToday?' <span style="font-size:10px;font-weight:400;color:var(--accent);margin-left:4px;">• heute</span>':''}</div>
+          <div class="day-date-sm">${dateLabel}</div>
+        </div>
+        <span class="day-hours ${dayMs===0?'zero':''}">${dayMs>0?fmtDecimal(decimalHours(dayMs)):'–'}</span>
+      </div>
+      ${hasData
+        ? `<div class="day-detail">${detailHtml}</div>`
+        : `<div class="day-empty-hint" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>Kein Eintrag</span>
+            <button onclick="openAddEntry('${key}')"
+              style="font-size:12px;font-weight:600;color:#c41212;background:rgba(196,18,18,0.09);
+              border:1px solid rgba(196,18,18,0.3);border-radius:8px;padding:5px 12px;cursor:pointer;">
+              + Nachtragen
+            </button>
+          </div>`
+      }
+    </div>`;
+  }
+
+  document.getElementById('weekDays').innerHTML = html;
+  document.getElementById('weekTotal').textContent = fmtDecimal(decimalHours(weekTotalMs));
+}
+
+function changeWeek(dir) {
+  currentWeekOffset += dir;
+  renderWeek();
+}
+
+// ═══════════════════════════════════════════════════
+// Tab Navigation
+// ═══════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'woche') renderWeek();
+}
+
+// ═══════════════════════════════════════════════════
+// PDF Export
+// ═══════════════════════════════════════════════════
+function getEntriesInRange(von, bis) {
+  const result = {};
+  Object.keys(state.entries).sort().forEach(key => {
+    if (key >= von && key <= bis) result[key] = state.entries[key];
+  });
+  return result;
+}
+
+
+function buildPDF(title, entries, name) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const PW = 210, M = 18, COL = 174;
+  const RED  = [50, 50, 55];
+  const DGRY = [80, 85, 90];
+  const LGRY = [245, 245, 245];
+  const MGRY = [220, 222, 226];
+  const WHT  = [255, 255, 255];
+  const BLK  = [30, 30, 30];
+
+  let y = 0;
+
+  // ── Header band (white) ──────────────────────
+  doc.setFillColor(...WHT);
+  doc.rect(0, 0, PW, 52, 'F');
+
+  // Red top stripe
+  doc.setFillColor(...RED);
+  doc.rect(0, 0, PW, 3, 'F');
+
+  // Title
+  doc.setTextColor(...RED);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.text('STUNDENNACHWEIS', M, 18);
+
+  // Subtitle / period
+  doc.setTextColor(...DGRY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(title, M, 26);
+
+  // Name
+  if (name) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...BLK);
+    doc.text(name, M, 34);
+  }
+
+  // Created date
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(160, 160, 160);
+  doc.text('Erstellt: ' + new Date().toLocaleString('de-DE'), M, 44);
+
+  // Bottom border of header
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(0.8);
+  doc.line(0, 52, PW, 52);
+
+  // Light gray background for content area
+  doc.setFillColor(...LGRY);
+  doc.rect(0, 52, PW, 245, 'F');
+
+  y = 62;
+
+  const days = Object.keys(entries);
+  if (days.length === 0) {
+    doc.setTextColor(...DGRY);
+    doc.setFontSize(11);
+    doc.text('Keine Einträge im gewählten Zeitraum.', M, y);
+    return doc;
+  }
+
+  let grandMs = 0;
+
+  days.forEach(key => {
+    const dayEntries = entries[key];
+    if (!dayEntries || !dayEntries.length) return;
+
+    const d = new Date(key + 'T12:00:00');
+    const dayLabel = d.toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+    const dayMs = dayEntries.reduce((a, e) => a + (e.durationMs || 0), 0);
+    grandMs += dayMs;
+
+    if (y > 255) { doc.addPage(); y = 20; }
+
+    // ── Day header bar ──
+    doc.setFillColor(...RED);
+    doc.roundedRect(M, y, COL, 9, 1.5, 1.5, 'F');
+    doc.setTextColor(...WHT);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text(dayLabel, M + 4, y + 6.2);
+    doc.text(fmtDecimal(decimalHours(dayMs)), PW - M - 4, y + 6.2, { align: 'right' });
+    y += 11;
+
+    // ── Column headers ──
+    doc.setFillColor(...MGRY);
+    doc.rect(M, y, COL, 6.5, 'F');
+    doc.setTextColor(...DGRY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('ZEIT', M + 4, y + 4.5);
+    doc.text('DAUER', M + 50, y + 4.5);
+    doc.text('TÄTIGKEIT / NOTIZ', M + 75, y + 4.5);
+    y += 8;
+
+    // ── Entry rows ──
+    dayEntries.forEach((e, i) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+
+      // alternating row bg
+      doc.setFillColor(i % 2 === 0 ? 255 : 238, i % 2 === 0 ? 255 : 240, i % 2 === 0 ? 255 : 240);
+      doc.rect(M, y, COL, 8, 'F');
+
+      // Thin red left accent per row
+      doc.setFillColor(...RED);
+      doc.rect(M, y, 1.5, 8, 'F');
+
+      // Time
+      doc.setTextColor(...BLK);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(fmtTime(e.kommen) + ' – ' + fmtTime(e.gehen), M + 5, y + 5.5);
+
+      // Duration
+      doc.setTextColor(...RED);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(fmtDecimal(e.durationH), M + 50, y + 5.5);
+
+      // Note
+      if (e.note) {
+        doc.setTextColor(...DGRY);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const lines = doc.splitTextToSize(e.note, COL - 80);
+        doc.text(lines, M + 75, y + 5.5);
+        if (lines.length > 1) y += (lines.length - 1) * 4;
+      }
+
+      // Bottom border per row
+      doc.setDrawColor(...MGRY);
+      doc.setLineWidth(0.2);
+      doc.line(M, y + 8, M + COL, y + 8);
+
+      y += 9;
+    });
+
+    y += 7;
+  });
+
+  // ── Grand total footer ──
+  if (y > 262) { doc.addPage(); y = 20; }
+
+  // Shadow effect
+  doc.setFillColor(180, 180, 180);
+  doc.roundedRect(M + 0.5, y + 0.5, COL, 13, 2, 2, 'F');
+
+  doc.setFillColor(...RED);
+  doc.roundedRect(M, y, COL, 13, 2, 2, 'F');
+
+  doc.setTextColor(...WHT);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('GESAMTSTUNDEN', M + 5, y + 8.5);
+  doc.text(fmtDecimal(decimalHours(grandMs)), PW - M - 5, y + 8.5, { align: 'right' });
+
+  // Footer line
+  if (y > 270) { doc.addPage(); y = 20; }
+  doc.setDrawColor(...MGRY);
+  doc.setLineWidth(0.3);
+  doc.line(M, y + 6, PW - M, y + 6);
+  doc.setTextColor(180, 180, 180);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Stundennachweis', PW / 2, y + 11, { align: 'center' });
+
+  return doc;
+}
+
+function exportDayPDF() {
+  const tag = document.getElementById('exportTag').value;
+  const name = document.getElementById('exportName').value;
+  if (!tag) { alert('Bitte einen Tag wählen.'); return; }
+  if (!(state.entries[tag] && state.entries[tag].length)) {
+    alert('Keine Einträge für diesen Tag.'); return;
+  }
+  const map = {}; map[tag] = state.entries[tag];
+  const d = new Date(tag + 'T12:00:00');
+  const title = d.toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+  const doc = buildPDF(title, map, name);
+  doc.save('Tagesnachweis_' + tag + '.pdf');
+}
+
+function exportPDF() {
+  const von = document.getElementById('exportVon').value;
+  const bis = document.getElementById('exportBis').value;
+  const name = document.getElementById('exportName').value;
+  if (!von || !bis) { alert('Bitte Von- und Bis-Datum wählen.'); return; }
+  if (von > bis) { alert('Von-Datum muss vor Bis-Datum liegen.'); return; }
+
+  const entries = getEntriesInRange(von, bis);
+  const title = fmtDate(von) + ' bis ' + fmtDate(bis);
+  const doc = buildPDF(title, entries, name);
+  doc.save('Stundennachweis_' + von + '_' + bis + '.pdf');
+}
+
+function exportWeekPDF() {
+  const monday = getWeekStart(currentWeekOffset);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const von = monday.toISOString().slice(0,10);
+  const bis = sunday.toISOString().slice(0,10);
+  const name = document.getElementById('exportName').value;
+  const entries = getEntriesInRange(von, bis);
+  const title = 'KW ' + getKW(monday) + ': ' + fmtDate(von) + ' – ' + fmtDate(bis);
+  const doc = buildPDF(title, entries, name);
+  doc.save('Stundennachweis_KW' + getKW(monday) + '.pdf');
+}
+
+function getKW(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function clearAll() {
+  if (!confirm('Wirklich alle gespeicherten Daten löschen?')) return;
+  state.entries = {};
+  state.running = false;
+  state.kommenTime = null;
+  save();
+  updateUI();
+  renderWeek();
+  alert('Alle Daten wurden gelöscht.');
+}
+
+// ═══════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════
+function initExportDates() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('exportTag').value = today;
+  const monday = getWeekStart(0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  document.getElementById('exportVon').value = monday.toISOString().slice(0,10);
+  document.getElementById('exportBis').value = sunday.toISOString().slice(0,10);
+}
+
+// ─── Voice Input ─────────────────────────────────
+let voiceActive = false;
+let voiceRecog = null;
+let voiceAccumulated = '';
+
+function toggleVoice() {
+  if (voiceActive) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+}
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert('Spracheingabe nicht verfügbar.\nBitte Safari auf iPhone oder Chrome auf Android verwenden.');
+    return;
+  }
+
+  const textarea = document.getElementById('notizInput');
+  voiceAccumulated = textarea.value ? textarea.value.trim() + ' ' : '';
+  voiceActive = true;
+
+  setVoiceUI(true);
+  runRecognition();
+}
+
+function runRecognition() {
+  if (!voiceActive) return;
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceRecog = new SR();
+  voiceRecog.lang = 'de-DE';
+  voiceRecog.continuous = false;
+  voiceRecog.interimResults = true;
+  voiceRecog.maxAlternatives = 1;
+
+  const textarea = document.getElementById('notizInput');
+  const preview = document.getElementById('voicePreview');
+
+  voiceRecog.onstart = function() {
+    document.getElementById('voiceStatusText').textContent = '🔴 Aufnahme läuft — sprich jetzt...';
+    preview.style.display = 'block';
+    preview.textContent = '...';
+  };
+
+  voiceRecog.onresult = function(e) {
+    let interim = '';
+    let newFinal = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        newFinal += e.results[i][0].transcript;
+      } else {
+        interim = e.results[i][0].transcript;
+      }
+    }
+    if (newFinal) {
+      voiceAccumulated += newFinal.trim() + ' ';
+    }
+    textarea.value = voiceAccumulated + interim;
+    preview.textContent = textarea.value || '...';
+  };
+
+  voiceRecog.onerror = function(e) {
+    if (e.error === 'no-speech') {
+      // restart silently
+      if (voiceActive) {
+        document.getElementById('voiceStatusText').textContent = '⏳ Warte auf Sprache...';
+        setTimeout(runRecognition, 250);
+      }
+      return;
+    }
+    if (e.error === 'not-allowed') {
+      alert('Mikrofon-Zugriff verweigert!\n\niPhone: Einstellungen → Safari → Mikrofon → Erlauben\nAndroid: Seite neu laden und "Erlauben" tippen');
+    } else if (e.error === 'network') {
+      alert('Netzwerkfehler bei Spracheingabe. Bitte Internetverbindung prüfen.');
+    } else {
+      console.log('Voice error:', e.error);
+    }
+    stopVoice();
+  };
+
+  voiceRecog.onend = function() {
+    if (voiceActive) {
+      // auto-restart after short pause
+      setTimeout(runRecognition, 200);
+    }
+  };
+
+  try {
+    voiceRecog.start();
+  } catch(err) {
+    console.log('start error:', err);
+    setTimeout(runRecognition, 500);
+  }
+}
+
+function stopVoice() {
+  voiceActive = false;
+  if (voiceRecog) {
+    try { voiceRecog.stop(); } catch(e) {}
+    voiceRecog = null;
+  }
+  const textarea = document.getElementById('notizInput');
+  textarea.value = voiceAccumulated.trim();
+  setVoiceUI(false);
+  document.getElementById('voicePreview').style.display = 'none';
+}
+
+function setVoiceUI(active) {
+  const btn = document.getElementById('voiceBtn');
+  const icon = document.getElementById('voiceBtnIcon');
+  const text = document.getElementById('voiceBtnText');
+  const status = document.getElementById('voiceStatus');
+
+  if (active) {
+    icon.textContent = '⏹';
+    text.textContent = 'Aufnahme stoppen';
+    btn.style.background = '#fef2f2';
+    btn.style.borderColor = '#c41212';
+    btn.style.color = '#c41212';
+    status.style.display = 'flex';
+  } else {
+    icon.textContent = '🎤';
+    text.textContent = 'Spracheingabe starten';
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    status.style.display = 'none';
+  }
+}
+
+
+
+// ─── Edit Entry ───────────────────────────────────
+function editEntry(key, idx) {
+  const e = state.entries[key][idx];
+  const k = new Date(e.kommen);
+  const g = new Date(e.gehen);
+  document.getElementById('editKey').value = key;
+  document.getElementById('editIdx').value = idx;
+  document.getElementById('editKommen').value =
+    String(k.getHours()).padStart(2,'0') + ':' + String(k.getMinutes()).padStart(2,'0');
+  document.getElementById('editGehen').value =
+    String(g.getHours()).padStart(2,'0') + ':' + String(g.getMinutes()).padStart(2,'0');
+  document.getElementById('editNote').value = e.note || '';
+  const modal = document.getElementById('editModal');
+  modal.style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function saveEdit() {
+  const key = document.getElementById('editKey').value;
+  const idx = parseInt(document.getElementById('editIdx').value);
+  const kommenTime = document.getElementById('editKommen').value;
+  const gehenTime  = document.getElementById('editGehen').value;
+  const note = document.getElementById('editNote').value.trim();
+
+  if (!kommenTime || !gehenTime) { alert('Bitte beide Zeiten eingeben.'); return; }
+
+  // Build new Date objects using the entry date + new times
+  const [kH, kM] = kommenTime.split(':').map(Number);
+  const [gH, gM] = gehenTime.split(':').map(Number);
+  const base = new Date(key + 'T00:00:00');
+  const newKommen = new Date(base); newKommen.setHours(kH, kM, 0, 0);
+  const newGehen  = new Date(base); newGehen.setHours(gH, gM, 0, 0);
+
+  if (newGehen <= newKommen) { alert('Gehen muss nach Kommen liegen.'); return; }
+
+  const durationMs = newGehen - newKommen;
+  state.entries[key][idx] = {
+    ...state.entries[key][idx],
+    kommen: newKommen.toISOString(),
+    gehen:  newGehen.toISOString(),
+    durationMs,
+    durationH: durationMs / 3600000,
+    note
+  };
+  save();
+  closeEditModal();
+  renderTodayEntries();
+  renderWeek();
+}
+
+
+// ─── Add Entry for past day ───────────────────────
+function openAddEntry(key) {
+  document.getElementById('addKey').value = key;
+  const d = new Date(key + 'T12:00:00');
+  document.getElementById('addModalDate').textContent =
+    d.toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+  document.getElementById('addKommen').value = '08:00';
+  document.getElementById('addGehen').value = '17:00';
+  document.getElementById('addNote').value = '';
+  document.getElementById('addModal').style.display = 'flex';
+}
+
+function closeAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+}
+
+function saveAddEntry() {
+  const key = document.getElementById('addKey').value;
+  const kommenTime = document.getElementById('addKommen').value;
+  const gehenTime  = document.getElementById('addGehen').value;
+  const note = document.getElementById('addNote').value.trim();
+
+  if (!kommenTime || !gehenTime) { alert('Bitte beide Zeiten eingeben.'); return; }
+
+  const [kH, kM] = kommenTime.split(':').map(Number);
+  const [gH, gM] = gehenTime.split(':').map(Number);
+  const base = new Date(key + 'T00:00:00');
+  const newKommen = new Date(base); newKommen.setHours(kH, kM, 0, 0);
+  const newGehen  = new Date(base); newGehen.setHours(gH, gM, 0, 0);
+
+  if (newGehen <= newKommen) { alert('Gehen muss nach Kommen liegen.'); return; }
+
+  const durationMs = newGehen - newKommen;
+  if (!state.entries[key]) state.entries[key] = [];
+  state.entries[key].push({
+    kommen: newKommen.toISOString(),
+    gehen:  newGehen.toISOString(),
+    durationMs,
+    durationH: durationMs / 3600000,
+    note
+  });
+  save();
+  closeAddModal();
+  renderWeek();
+  renderTodayEntries();
+}
+
+load();
+updateUI();
+startClock();
+renderWeek();
+initExportDates();
+</script>
+
+<!-- Edit Entry Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;">
+      ✏️ Eintrag bearbeiten
+    </div>
+    <input type="hidden" id="editKey"/>
+    <input type="hidden" id="editIdx"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Kommen</div>
+        <input type="time" id="editKommen"
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;
+          background:var(--surface2);color:var(--text);font-family:var(--mono);font-size:15px;outline:none;"/>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Gehen</div>
+        <input type="time" id="editGehen"
+          style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;
+          background:var(--surface2);color:var(--text);font-family:var(--mono);font-size:15px;outline:none;"/>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">Notiz</div>
+      <input type="text" id="editNote"
+        style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;
+        background:var(--surface2);color:var(--text);font-family:var(--sans);font-size:14px;outline:none;"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeEditModal()"
+        style="padding:12px;border-radius:10px;border:1px solid var(--border2);
+        background:var(--surface2);color:var(--muted);font-family:var(--sans);
+        font-size:14px;font-weight:600;cursor:pointer;">Abbrechen</button>
+      <button onclick="saveEdit()"
+        style="padding:12px;border-radius:10px;border:none;
+        background:var(--accent);color:#fff;font-family:var(--sans);
+        font-size:14px;font-weight:700;cursor:pointer;">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Entry Modal -->
+<div id="addModal" style="display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:#fff;border-radius:16px;padding:20px;width:100%;max-width:360px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="font-size:16px;font-weight:700;color:#0f1623;margin-bottom:4px;">+ Eintrag nachtragen</div>
+    <div id="addModalDate" style="font-size:12px;color:#6b7280;margin-bottom:16px;font-family:monospace;"></div>
+    <input type="hidden" id="addKey"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:#3d4455;margin-bottom:5px;">Kommen</div>
+        <input type="time" id="addKommen"
+          style="width:100%;padding:10px;border:1px solid #dde0e8;border-radius:8px;
+          background:#eef0f4;color:#0f1623;font-family:monospace;font-size:15px;outline:none;"/>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#3d4455;margin-bottom:5px;">Gehen</div>
+        <input type="time" id="addGehen"
+          style="width:100%;padding:10px;border:1px solid #dde0e8;border-radius:8px;
+          background:#eef0f4;color:#0f1623;font-family:monospace;font-size:15px;outline:none;"/>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;color:#3d4455;margin-bottom:5px;">Notiz (optional)</div>
+      <input type="text" id="addNote"
+        style="width:100%;padding:10px;border:1px solid #dde0e8;border-radius:8px;
+        background:#eef0f4;color:#0f1623;font-size:14px;outline:none;"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="closeAddModal()"
+        style="padding:12px;border-radius:10px;border:1px solid #c4c9d8;
+        background:#eef0f4;color:#6b7280;font-size:14px;font-weight:600;cursor:pointer;">
+        Abbrechen
+      </button>
+      <button onclick="saveAddEntry()"
+        style="padding:12px;border-radius:10px;border:none;
+        background:#c41212;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">
+        Speichern
+      </button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
